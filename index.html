@@ -34,7 +34,7 @@
     <style>
         :root {
             --primary-glow: 0 0 15px rgba(0, 243, 255, 0.4);
-            --danger-glow: 0 0 20px rgba(255, 42, 42, 0.6);
+            --danger-glow: 0 0 25px rgba(255, 42, 42, 0.8);
             --bg-color: #030407;
         }
         
@@ -79,27 +79,24 @@
             color: white;
         }
 
-        .neon-text { text-shadow: 0 0 8px rgba(0, 243, 255, 0.6); }
-        .title-font { font-family: 'Orbitron', sans-serif; }
-
         .emergency-stop {
             background: radial-gradient(circle, #ff2a2a 0%, #880000 100%);
-            border: 3px solid #330000;
+            border: 3px solid #550000;
             box-shadow: var(--danger-glow), inset 0 0 15px rgba(0,0,0,0.7);
-            transition: transform 0.1s;
+            transition: all 0.1s;
         }
-        .emergency-stop:active {
+        .emergency-stop:active, .emergency-stop.active-estop {
             transform: scale(0.96);
-            box-shadow: 0 0 5px rgba(255,42,42,0.3), inset 0 0 30px rgba(0,0,0,0.9);
+            background: radial-gradient(circle, #ff0000 0%, #550000 100%);
+            box-shadow: 0 0 40px rgba(255,42,42,1), inset 0 0 30px rgba(0,0,0,0.9);
+            border-color: #ff2a2a;
         }
 
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(0, 243, 255, 0.3); border-radius: 2px; }
 
-        input[type=range] {
-            -webkit-appearance: none; background: transparent; width: 100%;
-        }
+        input[type=range] { -webkit-appearance: none; background: transparent; width: 100%; }
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none; height: 18px; width: 18px;
             border-radius: 50%; background: #00f3ff; cursor: pointer;
@@ -110,26 +107,16 @@
             background: rgba(0, 243, 255, 0.2); border-radius: 2px;
         }
 
-        /* Color Picker Reset */
         input[type="color"] {
-            -webkit-appearance: none;
-            border: none;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            cursor: pointer;
-            padding: 0;
-            background: none;
+            -webkit-appearance: none; border: none; width: 32px; height: 32px;
+            border-radius: 50%; cursor: pointer; padding: 0; background: none;
         }
         input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
         input[type="color"]::-webkit-color-swatch { border: 2px solid rgba(255,255,255,0.2); border-radius: 50%; }
 
         .hidden-tab { display: none !important; }
-        
         #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
-        
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        
         .toast { animation: slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
     </style>
 </head>
@@ -143,8 +130,8 @@
                 <i class="fa-solid fa-microchip text-xl text-neon-cyan"></i>
             </div>
             <div>
-                <h1 class="title-font text-xl md:text-2xl font-bold tracking-widest text-neon-cyan drop-shadow-md">NEXUS<span class="text-white">-C3</span></h1>
-                <p class="text-[10px] text-gray-400 font-mono tracking-widest uppercase">ESP32 + DRV8833 Advanced Platform</p>
+                <h1 class="font-orbitron text-xl md:text-2xl font-bold tracking-widest text-neon-cyan drop-shadow-md">NEXUS<span class="text-white">-C3</span></h1>
+                <p class="text-[10px] text-gray-400 font-mono tracking-widest uppercase">Firmware v3.0 | DRV8833 + WS2812B</p>
             </div>
         </div>
 
@@ -153,7 +140,7 @@
                 <i class="fa-solid fa-wifi text-gray-500 text-sm"></i>
                 <input type="text" id="ip-address" placeholder="192.168.4.1" class="bg-transparent border-none outline-none text-neon-cyan font-mono w-28 md:w-32 text-sm">
             </div>
-            <button id="btn-connect" class="glass-btn px-4 py-2 rounded-lg text-sm font-bold tracking-wider title-font flex items-center gap-2">
+            <button id="btn-connect" class="glass-btn px-4 py-2 rounded-lg text-sm font-bold tracking-wider font-orbitron flex items-center gap-2">
                 <i class="fa-solid fa-link"></i> LINK
             </button>
             <div class="flex items-center gap-2 ml-2 bg-black/40 px-3 py-1.5 rounded-full border border-gray-800">
@@ -165,24 +152,30 @@
 
     <main class="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden z-10">
         
-        <!-- LEFT COLUMN: Telemetry & Smart Lighting -->
         <div class="w-full md:w-1/4 flex flex-col gap-4 min-w-[280px]">
             
-            <!-- Telemetry Dashboard -->
+            <!-- Live Status Telemetry -->
             <div class="glass-panel p-4 flex flex-col gap-3">
                 <div class="flex justify-between items-center border-b border-gray-800/50 pb-2">
-                    <span class="text-xs font-mono text-neon-cyan tracking-wider"><i class="fa-solid fa-satellite-dish mr-1"></i> TELEMETRY</span>
-                    <span id="ping-display" class="text-[10px] font-mono text-gray-400 bg-black/50 px-2 py-0.5 rounded">-- ms</span>
+                    <span class="text-xs font-mono text-neon-cyan tracking-wider"><i class="fa-solid fa-satellite-dish mr-1"></i> LIVE STATUS</span>
                 </div>
                 
-                <div class="grid grid-cols-2 gap-3 text-xs font-mono">
-                    <div class="bg-black/40 p-2.5 rounded-lg border border-gray-800/50 flex flex-col items-center justify-center">
-                        <span class="text-gray-500 mb-1 text-[9px] tracking-widest">CMD STATE</span>
-                        <span id="tele-cmd" class="text-white text-xl font-bold font-orbitron">IDLE</span>
+                <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+                    <div class="bg-black/40 p-2 rounded border border-gray-800/50 flex flex-col">
+                        <span class="text-gray-500 text-[9px] tracking-widest mb-1">MOVEMENT</span>
+                        <span id="tele-cmd" class="text-white font-bold">STOPPED</span>
                     </div>
-                    <div class="bg-black/40 p-2.5 rounded-lg border border-gray-800/50 flex flex-col items-center justify-center">
-                        <span class="text-gray-500 mb-1 text-[9px] tracking-widest">PWM SPEED</span>
-                        <span id="tele-spd" class="text-neon-purple text-xl font-bold font-orbitron">255</span>
+                    <div class="bg-black/40 p-2 rounded border border-gray-800/50 flex flex-col">
+                        <span class="text-gray-500 text-[9px] tracking-widest mb-1">LED MODE</span>
+                        <span id="tele-ledmode" class="text-neon-purple font-bold">STATIC</span>
+                    </div>
+                    <div class="bg-black/40 p-2 rounded border border-gray-800/50 flex flex-col">
+                        <span class="text-gray-500 text-[9px] tracking-widest mb-1">ACTIVE FX</span>
+                        <span id="tele-effect" class="text-neon-cyan font-bold">WHITE</span>
+                    </div>
+                    <div class="bg-black/40 p-2 rounded border border-gray-800/50 flex flex-col">
+                        <span class="text-gray-500 text-[9px] tracking-widest mb-1">E-STOP STATE</span>
+                        <span id="tele-estop" class="text-green-500 font-bold">SAFE</span>
                     </div>
                 </div>
             </div>
@@ -190,47 +183,31 @@
             <!-- Smart Lighting Panel -->
             <div class="glass-panel flex-1 flex flex-col p-4 gap-3 overflow-y-auto">
                 <div class="text-xs font-mono text-neon-cyan tracking-wider border-b border-gray-800/50 pb-2 flex items-center justify-between">
-                    <span><i class="fa-solid fa-lightbulb mr-1"></i> ILLUMINATION</span>
+                    <span><i class="fa-solid fa-lightbulb mr-1"></i> SMART ILLUMINATION</span>
                     <i class="fa-solid fa-circle text-green-500 text-[8px] animate-pulse"></i>
                 </div>
 
                 <!-- Mode Selection -->
-                <div class="grid grid-cols-3 gap-2">
-                    <button class="led-mode-btn active glass-btn py-2 rounded text-[10px] font-mono font-bold" data-mode="AUTO">AUTO</button>
-                    <button class="led-mode-btn glass-btn py-2 rounded text-[10px] font-mono font-bold" data-mode="STATIC">STATIC</button>
-                    <button class="led-mode-btn glass-btn py-2 rounded text-[10px] font-mono font-bold" data-mode="RGB">FX</button>
+                <div class="grid grid-cols-2 gap-2">
+                    <button class="led-mode-btn active glass-btn py-2 rounded text-[10px] font-mono font-bold" data-mode="STATIC">STATIC COLOR</button>
+                    <button class="led-mode-btn glass-btn py-2 rounded text-[10px] font-mono font-bold" data-mode="RGB">RGB EFFECTS</button>
                 </div>
 
-                <!-- Dynamic Options Container -->
                 <div id="led-options-container" class="flex-1 flex flex-col gap-4 mt-2">
-                    
-                    <!-- AUTO Options -->
-                    <div id="opt-auto" class="flex flex-col gap-2">
-                        <span class="text-[10px] text-gray-500 font-mono">Forward Effect:</span>
-                        <select id="sel-fwd-effect" class="bg-black/50 border border-gray-700 text-gray-300 text-xs rounded p-2 outline-none font-mono">
-                            <option value="BREATHING">White Breathing</option>
-                            <option value="COMET">Hyper Comet</option>
-                            <option value="RAINBOW">Motion Rainbow</option>
-                        </select>
-                        <p class="text-[9px] text-gray-600 mt-2 font-mono leading-relaxed">
-                            • Turn signals: Automatic Amber<br>
-                            • Braking: Adaptive Red Flash<br>
-                            • Reverse: High-Beam Red
-                        </p>
-                    </div>
-
                     <!-- STATIC Options -->
-                    <div id="opt-static" class="hidden-tab flex flex-col gap-3">
+                    <div id="opt-static" class="flex flex-col gap-3">
                         <div class="flex items-center justify-between">
-                            <span class="text-[10px] text-gray-500 font-mono">Custom Color:</span>
+                            <span class="text-[10px] text-gray-500 font-mono">Select Color:</span>
                             <input type="color" id="color-picker" value="#ffffff">
                         </div>
-                        <div class="grid grid-cols-5 gap-2 mt-1">
-                            <button class="color-preset w-full aspect-square rounded-full bg-white border border-gray-700" data-rgb="255,255,255"></button>
-                            <button class="color-preset w-full aspect-square rounded-full bg-red-500 border border-gray-700" data-rgb="255,0,0"></button>
-                            <button class="color-preset w-full aspect-square rounded-full bg-blue-500 border border-gray-700" data-rgb="0,0,255"></button>
-                            <button class="color-preset w-full aspect-square rounded-full bg-green-500 border border-gray-700" data-rgb="0,255,0"></button>
-                            <button class="color-preset w-full aspect-square rounded-full bg-purple-500 border border-gray-700" data-rgb="128,0,128"></button>
+                        <div class="grid grid-cols-4 gap-2 mt-1">
+                            <button class="color-preset w-full aspect-square rounded-full bg-white border border-gray-700" data-rgb="255,255,255" data-name="WHITE"></button>
+                            <button class="color-preset w-full aspect-square rounded-full bg-red-500 border border-gray-700" data-rgb="255,0,0" data-name="RED"></button>
+                            <button class="color-preset w-full aspect-square rounded-full bg-green-500 border border-gray-700" data-rgb="0,255,0" data-name="GREEN"></button>
+                            <button class="color-preset w-full aspect-square rounded-full bg-blue-500 border border-gray-700" data-rgb="0,0,255" data-name="BLUE"></button>
+                            <button class="color-preset w-full aspect-square rounded-full bg-purple-500 border border-gray-700" data-rgb="128,0,128" data-name="PURPLE"></button>
+                            <button class="color-preset w-full aspect-square rounded-full bg-orange-500 border border-gray-700" data-rgb="255,165,0" data-name="ORANGE"></button>
+                            <button class="color-preset w-full aspect-square rounded-full bg-yellow-400 border border-gray-700" data-rgb="255,255,0" data-name="YELLOW"></button>
                         </div>
                     </div>
 
@@ -238,30 +215,35 @@
                     <div id="opt-rgb" class="hidden-tab flex flex-col gap-2">
                         <span class="text-[10px] text-gray-500 font-mono">Animation Style:</span>
                         <select id="sel-rgb-effect" class="bg-black/50 border border-gray-700 text-neon-cyan text-xs rounded p-2 outline-none font-mono">
-                            <option value="RAINBOW">Neon Rainbow</option>
+                            <option value="RAINBOW">Rainbow Mode</option>
                             <option value="BREATHING">Color Breathing</option>
-                            <option value="POLICE">Police Strobe</option>
                             <option value="PULSE">Cyan Pulse</option>
+                            <option value="POLICE">Police Strobe</option>
                             <option value="FIRE">Plasma Fire</option>
+                            <option value="NEON_GLOW">Neon Glow</option>
+                            <option value="COLOR_WAVE">Color Wave</option>
                         </select>
                     </div>
 
-                    <!-- Global Brightness & Speed -->
+                    <!-- Sliders -->
                     <div class="mt-auto flex flex-col gap-3 pt-3 border-t border-gray-800/50">
                         <div>
                             <div class="flex justify-between text-[9px] font-mono text-gray-400 mb-1">
-                                <span>LUMENS</span> <span id="val-brightness">255</span>
+                                <span>BRIGHTNESS</span> <span id="val-brightness">255</span>
                             </div>
                             <input type="range" id="sl-brightness" min="0" max="255" value="255">
                         </div>
                         <div>
                             <div class="flex justify-between text-[9px] font-mono text-gray-400 mb-1">
-                                <span>FX SPEED</span> <span id="val-fxspeed">50</span>
+                                <span>EFFECT SPEED</span> <span id="val-fxspeed">50</span>
                             </div>
                             <input type="range" id="sl-fxspeed" min="1" max="100" value="50">
                         </div>
                     </div>
-
+                    
+                    <p class="text-[9px] text-gray-600 font-mono mt-1 leading-tight text-center">
+                        Reverse, E-Stop, and Turns automatically override selected lighting.
+                    </p>
                 </div>
             </div>
         </div>
@@ -269,13 +251,13 @@
         <div class="glass-panel flex-[2] flex flex-col">
             <!-- Navigation Tabs -->
             <div class="flex border-b border-gray-800/50">
-                <button class="tab-btn flex-1 py-3 text-xs md:text-sm font-bold tracking-wider title-font text-neon-cyan border-b-2 border-neon-cyan bg-neon-cyan/5 transition" data-target="tab-manual">
+                <button class="tab-btn flex-1 py-3 text-xs md:text-sm font-bold tracking-wider font-orbitron text-neon-cyan border-b-2 border-neon-cyan bg-neon-cyan/5 transition" data-target="tab-manual">
                     <i class="fa-solid fa-gamepad mr-2"></i>MANUAL
                 </button>
-                <button class="tab-btn flex-1 py-3 text-xs md:text-sm font-bold tracking-wider title-font text-gray-500 hover:text-white transition" data-target="tab-path">
+                <button class="tab-btn flex-1 py-3 text-xs md:text-sm font-bold tracking-wider font-orbitron text-gray-500 hover:text-white transition" data-target="tab-path">
                     <i class="fa-solid fa-route mr-2"></i>SYS-PATH
                 </button>
-                <button class="tab-btn flex-1 py-3 text-xs md:text-sm font-bold tracking-wider title-font text-gray-500 hover:text-white transition" data-target="tab-auto">
+                <button class="tab-btn flex-1 py-3 text-xs md:text-sm font-bold tracking-wider font-orbitron text-gray-500 hover:text-white transition" data-target="tab-auto">
                     <i class="fa-solid fa-robot mr-2"></i>AUTONOMY
                 </button>
             </div>
@@ -284,28 +266,23 @@
                 
                 <!-- TAB 1: Manual Joystick -->
                 <div id="tab-manual" class="absolute inset-0 flex flex-col items-center justify-center p-4">
-                    <!-- Joystick Zone -->
                     <div class="relative w-64 h-64 md:w-80 md:h-80 bg-black/40 rounded-full border border-gray-800 shadow-[inset_0_0_30px_rgba(0,0,0,0.8)] flex items-center justify-center touch-none" id="joystick-zone">
-                        <!-- Crosshairs -->
                         <div class="absolute inset-0 rounded-full border border-gray-800/50 m-8 pointer-events-none"></div>
                         <div class="w-full h-px bg-gray-800/50 absolute pointer-events-none"></div>
                         <div class="h-full w-px bg-gray-800/50 absolute pointer-events-none"></div>
                         
-                        <!-- Axis Labels -->
-                        <div class="absolute top-3 text-neon-cyan font-bold title-font text-xs opacity-50">FWD</div>
-                        <div class="absolute bottom-3 text-neon-cyan font-bold title-font text-xs opacity-50">REV</div>
-                        <div class="absolute left-4 text-neon-cyan font-bold title-font text-xs opacity-50">LT</div>
-                        <div class="absolute right-4 text-neon-cyan font-bold title-font text-xs opacity-50">RT</div>
+                        <div class="absolute top-3 text-neon-cyan font-bold font-orbitron text-xs opacity-50">FWD</div>
+                        <div class="absolute bottom-3 text-neon-cyan font-bold font-orbitron text-xs opacity-50">REV</div>
+                        <div class="absolute left-4 text-neon-cyan font-bold font-orbitron text-xs opacity-50">LT</div>
+                        <div class="absolute right-4 text-neon-cyan font-bold font-orbitron text-xs opacity-50">RT</div>
                         
-                        <!-- Knob -->
                         <div id="joystick-knob" class="w-24 h-24 bg-black/60 rounded-full border-2 border-neon-cyan shadow-[0_0_20px_rgba(0,243,255,0.3)] absolute cursor-grab active:cursor-grabbing backdrop-blur-md transition-transform duration-75 flex items-center justify-center">
                             <div class="w-10 h-10 bg-neon-cyan rounded-full shadow-[inset_0_0_10px_rgba(255,255,255,0.5),_0_0_15px_#00f3ff]"></div>
                         </div>
                     </div>
 
-                    <!-- Keyboard Helper -->
                     <div class="absolute bottom-4 left-4 hidden md:flex flex-col gap-1 opacity-60">
-                        <span class="text-[9px] font-mono text-neon-cyan mb-1">KEYBOARD LINK ACTIVE</span>
+                        <span class="text-[9px] font-mono text-neon-cyan mb-1">KEYBOARD LINK</span>
                         <div class="flex gap-1 justify-center ml-8"><div class="kbd w-8 h-8 bg-black/60 border border-gray-700 rounded flex items-center justify-center font-mono text-xs" id="key-w">W</div></div>
                         <div class="flex gap-1">
                             <div class="kbd w-8 h-8 bg-black/60 border border-gray-700 rounded flex items-center justify-center font-mono text-xs" id="key-a">A</div>
@@ -324,21 +301,14 @@
                             <button id="btn-exec-path" class="text-[10px] bg-neon-cyan/10 text-neon-cyan border border-neon-cyan hover:bg-neon-cyan/30 px-4 py-1.5 rounded font-mono font-bold transition shadow-[0_0_10px_rgba(0,255,255,0.2)]">EXECUTE</button>
                         </div>
                     </div>
-                    
-                    <!-- Canvas Area -->
                     <div class="flex-1 relative rounded-lg border border-gray-700 overflow-hidden bg-[radial-gradient(rgba(255,255,255,0.1)_1px,transparent_1px)] [background-size:20px_20px]">
                         <canvas id="path-canvas" class="absolute inset-0 w-full h-full cursor-crosshair touch-none"></canvas>
-                        
-                        <!-- Timeline Overlay -->
-                        <div id="path-timeline" class="absolute bottom-0 left-0 w-full h-14 bg-black/90 border-t border-gray-800 flex items-center px-3 gap-2 overflow-x-auto whitespace-nowrap hidden custom-scrollbar">
-                            <!-- Commands injected via JS -->
-                        </div>
+                        <div id="path-timeline" class="absolute bottom-0 left-0 w-full h-14 bg-black/90 border-t border-gray-800 flex items-center px-3 gap-2 overflow-x-auto whitespace-nowrap hidden custom-scrollbar"></div>
                     </div>
                 </div>
 
                 <!-- TAB 3: Autonomy & Macros -->
                 <div id="tab-auto" class="absolute inset-0 flex flex-col hidden-tab p-4 gap-4 overflow-y-auto">
-                    <!-- Macro Recorder -->
                     <div class="bg-black/40 p-4 rounded-xl border border-gray-800/50">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="font-mono text-xs text-neon-purple font-bold tracking-widest"><i class="fa-solid fa-tape mr-2"></i> COMMAND RECORDER</h3>
@@ -347,18 +317,15 @@
                                 <i class="fa-solid fa-circle" id="rec-icon"></i> <span id="rec-text">REC START</span>
                             </button>
                         </div>
-                        
                         <div class="h-28 bg-black/60 rounded border border-gray-800 p-3 overflow-y-auto font-mono text-[10px] mb-3" id="macro-log">
                             <div class="text-gray-600 text-center mt-8">Awaiting recording input...</div>
                         </div>
-                        
                         <div class="flex gap-2">
                             <button class="glass-btn px-3 py-1.5 rounded text-[10px] font-mono flex items-center gap-1 text-gray-300" onclick="controller.playMacroSequence('square')"><i class="fa-solid fa-square"></i> Square</button>
                             <button class="glass-btn px-3 py-1.5 rounded text-[10px] font-mono flex items-center gap-1 text-gray-300" onclick="controller.playMacroSequence('circle')"><i class="fa-solid fa-circle-notch"></i> Circle</button>
+                            <button class="glass-btn px-3 py-1.5 rounded text-[10px] font-mono flex items-center gap-1 text-gray-300" onclick="controller.playMacroSequence('fig8')"><i class="fa-solid fa-infinity"></i> Figure 8</button>
                         </div>
                     </div>
-
-                    <!-- Autonomous Routines -->
                     <div class="flex-1 bg-black/40 p-4 rounded-xl border border-gray-800/50 flex flex-col">
                         <h3 class="font-mono text-xs text-neon-cyan font-bold tracking-widest mb-4"><i class="fa-solid fa-brain mr-2"></i> AI ROUTINES</h3>
                         <div class="grid grid-cols-2 gap-3 flex-1">
@@ -382,15 +349,12 @@
 
         <div class="w-full md:w-1/4 flex flex-col gap-4 min-w-[200px]">
             
-            <!-- Thruster Control -->
             <div class="glass-panel p-5 flex flex-col gap-4">
                 <div class="flex justify-between items-center text-[10px] font-mono text-gray-400 tracking-widest">
                     <span><i class="fa-solid fa-gauge-high mr-1"></i> THRUST LEVEL</span>
                     <span id="speed-display" class="text-neon-cyan font-bold text-sm">255</span>
                 </div>
-                
                 <input type="range" id="sl-speed" min="0" max="255" value="255" class="w-full my-2">
-                
                 <div class="grid grid-cols-4 gap-1 mt-2">
                     <button class="spd-btn text-[9px] font-mono bg-black border border-gray-700 hover:border-gray-400 rounded py-1.5 transition" data-val="100">LOW</button>
                     <button class="spd-btn text-[9px] font-mono bg-black border border-gray-700 hover:border-gray-400 rounded py-1.5 transition" data-val="160">MED</button>
@@ -399,7 +363,6 @@
                 </div>
             </div>
 
-            <!-- Accessories -->
             <div class="glass-panel p-4 flex gap-3">
                 <button id="btn-horn" class="glass-btn flex-1 flex flex-col items-center justify-center gap-2 py-4 rounded-lg">
                     <i class="fa-solid fa-bullhorn text-xl text-neon-amber drop-shadow-[0_0_5px_#ffb300]"></i>
@@ -411,11 +374,10 @@
                 </button>
             </div>
 
-            <!-- Emergency Stop -->
             <div class="mt-auto">
-                <button id="btn-estop" class="w-full emergency-stop rounded-xl py-6 flex flex-col items-center justify-center gap-2 text-white outline-none select-none shadow-[0_10px_20px_rgba(0,0,0,0.5)]">
+                <button id="btn-estop" class="w-full emergency-stop rounded-xl py-6 flex flex-col items-center justify-center gap-2 text-white outline-none select-none">
                     <i class="fa-solid fa-triangle-exclamation text-4xl mb-1 drop-shadow-md"></i>
-                    <span class="title-font font-black text-2xl tracking-widest uppercase text-shadow-md">E-STOP</span>
+                    <span class="font-orbitron font-black text-2xl tracking-widest uppercase text-shadow-md">E-STOP</span>
                     <span class="font-mono text-[9px] opacity-70 tracking-widest">(SPACEBAR)</span>
                 </button>
             </div>
@@ -424,7 +386,6 @@
     </main>
 
     <script>
-        // Utilities
         const Utils = {
             toast: (title, msg, type = 'info') => {
                 const container = document.getElementById('toast-container');
@@ -432,7 +393,7 @@
                 let borderCol = type === 'error' ? '#ff2a2a' : (type === 'success' ? '#39ff14' : '#00f3ff');
                 toast.className = `toast bg-black/90 backdrop-blur-md border-l-4 p-3 rounded shadow-[0_5px_15px_rgba(0,0,0,0.5)] min-w-[250px]`;
                 toast.style.borderColor = borderCol;
-                toast.innerHTML = `<strong class="block mb-1 text-xs title-font tracking-wider" style="color:${borderCol}">${title}</strong><span class="text-gray-300 text-[10px] font-mono">${msg}</span>`;
+                toast.innerHTML = `<strong class="block mb-1 text-xs font-orbitron tracking-wider" style="color:${borderCol}">${title}</strong><span class="text-gray-300 text-[10px] font-mono">${msg}</span>`;
                 container.appendChild(toast);
                 setTimeout(() => {
                     toast.style.transform = 'translateX(120%)';
@@ -448,13 +409,12 @@
                 this.ip = localStorage.getItem('nexus_ip') || '';
                 this.isConnected = false;
                 this.lastState = 'S';
+                this.isEStop = false;
                 
-                // State tracking for macros
                 this.isRecording = false;
                 this.macroSequence = [];
                 this.macroStartTime = 0;
                 this.isMacroPlaying = false;
-                
                 this.autoInterval = null;
 
                 this.initUI();
@@ -474,36 +434,27 @@
                     this.connect();
                 });
 
-                document.getElementById('btn-estop').addEventListener('click', () => this.emergencyStop());
+                document.getElementById('btn-estop').addEventListener('click', () => this.triggerEmergencyStop());
                 
                 // Speed Controller
                 const speedSlider = document.getElementById('sl-speed');
                 const speedDisplay = document.getElementById('speed-display');
-                const teleSpd = document.getElementById('tele-spd');
                 
                 const updateSpeed = (val) => {
                     speedSlider.value = val;
                     speedDisplay.textContent = val;
-                    teleSpd.textContent = val;
                     this.sendReq(`Speed=${val}`);
                 };
                 
-                speedSlider.addEventListener('input', (e) => {
-                    speedDisplay.textContent = e.target.value;
-                    teleSpd.textContent = e.target.value;
-                });
+                speedSlider.addEventListener('input', (e) => speedDisplay.textContent = e.target.value);
                 speedSlider.addEventListener('change', (e) => updateSpeed(e.target.value));
-                
-                document.querySelectorAll('.spd-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => updateSpeed(e.target.dataset.val));
-                });
+                document.querySelectorAll('.spd-btn').forEach(btn => btn.addEventListener('click', (e) => updateSpeed(e.target.dataset.val)));
 
-                // Horn
+                // Accessories
                 const btnHorn = document.getElementById('btn-horn');
                 btnHorn.addEventListener('mousedown', () => this.sendReq("State=V"));
                 btnHorn.addEventListener('touchstart', () => this.sendReq("State=V"), {passive: true});
 
-                // Standard Headlight
                 const btnHeadlight = document.getElementById('btn-headlight');
                 let headlightOn = false;
                 btnHeadlight.addEventListener('click', () => {
@@ -520,39 +471,45 @@
                     }
                 });
 
-                // Lighting Panel Logic
                 document.querySelectorAll('.led-mode-btn').forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         document.querySelectorAll('.led-mode-btn').forEach(b => b.classList.remove('active'));
                         e.target.classList.add('active');
                         const mode = e.target.dataset.mode;
                         
-                        document.getElementById('opt-auto').classList.add('hidden-tab');
                         document.getElementById('opt-static').classList.add('hidden-tab');
                         document.getElementById('opt-rgb').classList.add('hidden-tab');
                         
-                        if(mode === 'AUTO') document.getElementById('opt-auto').classList.remove('hidden-tab');
                         if(mode === 'STATIC') document.getElementById('opt-static').classList.remove('hidden-tab');
                         if(mode === 'RGB') document.getElementById('opt-rgb').classList.remove('hidden-tab');
                         
+                        document.getElementById('tele-ledmode').textContent = mode;
                         this.sendReq(`LEDMODE=${mode}`);
+                        
+                        // Force re-send active effect/color based on mode
+                        if (mode === 'STATIC') this.sendReq(`COLOR=${document.getElementById('color-picker').value.slice(1).match(/.{2}/g).map(x => parseInt(x, 16)).join(',')}`);
+                        else this.sendReq(`EFFECT=${document.getElementById('sel-rgb-effect').value}`);
                     });
                 });
 
                 document.getElementById('color-picker').addEventListener('change', (e) => {
                     const hex = e.target.value;
                     const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+                    document.getElementById('tele-effect').textContent = "CUSTOM";
                     this.sendReq(`COLOR=${r},${g},${b}`);
                 });
 
                 document.querySelectorAll('.color-preset').forEach(btn => {
                     btn.addEventListener('click', (e) => {
+                        document.getElementById('tele-effect').textContent = e.target.dataset.name;
                         this.sendReq(`COLOR=${e.target.dataset.rgb}`);
                     });
                 });
 
-                document.getElementById('sel-fwd-effect').addEventListener('change', (e) => this.sendReq(`FWDEFFECT=${e.target.value}`));
-                document.getElementById('sel-rgb-effect').addEventListener('change', (e) => this.sendReq(`EFFECT=${e.target.value}`));
+                document.getElementById('sel-rgb-effect').addEventListener('change', (e) => {
+                    document.getElementById('tele-effect').textContent = e.target.value.replace('_', ' ');
+                    this.sendReq(`EFFECT=${e.target.value}`);
+                });
                 
                 document.getElementById('sl-brightness').addEventListener('change', (e) => {
                     document.getElementById('val-brightness').textContent = e.target.value;
@@ -579,12 +536,10 @@
                         
                         const target = e.currentTarget.getAttribute('data-target');
                         document.getElementById(target).classList.remove('hidden-tab');
-                        
                         if (target === 'tab-path') window.dispatchEvent(new Event('resize'));
                     });
                 });
 
-                // Macro UI
                 document.getElementById('btn-record').addEventListener('click', () => this.toggleRecord());
                 document.getElementById('btn-stop-auto').addEventListener('click', () => this.abortAuto());
             }
@@ -594,18 +549,14 @@
                 document.getElementById('conn-status-text').style.color = "#ffb300";
                 
                 try {
-                    const start = performance.now();
                     await fetch(`http://${this.ip}/`, { mode: 'no-cors', cache: 'no-store', signal: AbortSignal.timeout(3000) });
-                    const ping = Math.round(performance.now() - start);
-                    
                     this.isConnected = true;
                     document.getElementById('conn-status-dot').className = "w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_8px_#39ff14]";
                     document.getElementById('conn-status-text').textContent = "ONLINE";
                     document.getElementById('conn-status-text').style.color = "#39ff14";
-                    document.getElementById('ping-display').textContent = ping + " ms";
                     
                     Utils.toast("Uplink Established", `Connected to ${this.ip}`, "success");
-                    this.sendReq(`Speed=${document.getElementById('sl-speed').value}`); // Sync speed
+                    this.sendReq(`Speed=${document.getElementById('sl-speed').value}`);
                     
                     if(!this.pingInterval) this.pingInterval = setInterval(() => this.ping(), 4000);
                 } catch (e) {
@@ -620,45 +571,55 @@
             async ping() {
                 if(!this.isConnected || !this.ip) return;
                 try {
-                    const start = performance.now();
                     await fetch(`http://${this.ip}/`, { mode: 'no-cors', cache: 'no-store', signal: AbortSignal.timeout(2000) });
-                    document.getElementById('ping-display').textContent = Math.round(performance.now() - start) + " ms";
                 } catch(e) {
                     this.isConnected = false;
                     document.getElementById('conn-status-dot').className = "w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_#ff2a2a]";
                     document.getElementById('conn-status-text').textContent = "LOST";
                     document.getElementById('conn-status-text').style.color = "#ff2a2a";
-                    document.getElementById('ping-display').textContent = "-- ms";
-                    this.emergencyStop();
+                    this.triggerEmergencyStop();
                 }
             }
 
             sendReq(params, silent = false) {
-                // If it's a movement command, handle Macro recording
-                if (params.startsWith("State=") && this.isRecording && !silent) {
-                    const cmd = params.split("=")[1];
-                    if ("FBLRGIHJS".includes(cmd)) this.recordMacroStep(cmd);
-                }
-
+                // Command processing
                 if (params.startsWith("State=")) {
                     const cmd = params.split("=")[1];
+                    
+                    if (cmd === 'E') {
+                        this.isEStop = true;
+                        document.getElementById('tele-estop').textContent = "ACTIVE";
+                        document.getElementById('tele-estop').classList.replace('text-green-500', 'text-neon-red');
+                        document.getElementById('btn-estop').classList.add('active-estop');
+                    } else if ("FBLRGIHJ".includes(cmd)) {
+                        if (this.isEStop) {
+                            this.isEStop = false;
+                            document.getElementById('tele-estop').textContent = "SAFE";
+                            document.getElementById('tele-estop').classList.replace('text-neon-red', 'text-green-500');
+                            document.getElementById('btn-estop').classList.remove('active-estop');
+                        }
+                    }
+
                     if (cmd === this.lastState && "FBLRGIHJS".includes(cmd)) return; // Prevent spam
                     if ("FBLRGIHJS".includes(cmd)) {
                         this.lastState = cmd;
-                        document.getElementById('tele-cmd').textContent = cmd;
+                        let map = { 'F':'FORWARD', 'B':'REVERSE', 'L':'LEFT', 'R':'RIGHT', 'G':'FWD-LEFT', 'I':'FWD-RIGHT', 'H':'REV-LEFT', 'J':'REV-RIGHT', 'S':'STOPPED' };
+                        document.getElementById('tele-cmd').textContent = map[cmd];
                     }
+                    
+                    if (this.isRecording && !silent && "FBLRGIHJS".includes(cmd)) this.recordMacroStep(cmd);
                 }
 
                 if (!this.isConnected || !this.ip) return;
                 fetch(`http://${this.ip}/?${params}`, { mode: 'no-cors', cache: 'no-store' }).catch(()=>{});
             }
 
-            emergencyStop() {
+            triggerEmergencyStop() {
                 this.abortAuto();
                 this.isMacroPlaying = false;
                 if(this.isRecording) this.toggleRecord();
-                this.sendReq("State=S");
-                Utils.toast("EMERGENCY STOP", "All drives halted.", "error");
+                this.sendReq("State=E");
+                Utils.toast("EMERGENCY STOP", "Motors halted. LEDs locked to RED.", "error");
             }
 
             toggleRecord() {
@@ -696,9 +657,7 @@
                 const delta = now - this.macroStartTime;
                 this.macroStartTime = now;
                 
-                if (this.macroSequence.length > 0) {
-                    this.macroSequence[this.macroSequence.length - 1].dur = delta;
-                }
+                if (this.macroSequence.length > 0) this.macroSequence[this.macroSequence.length - 1].dur = delta;
                 this.macroSequence.push({ cmd: cmd, dur: 0 });
                 
                 const log = document.getElementById('macro-log');
@@ -717,6 +676,8 @@
                     seq.push({cmd:'S',dur:0});
                 } else if (typeOrSeq === 'circle') {
                     seq.push({cmd:'G',dur:4000}); seq.push({cmd:'S',dur:0});
+                } else if (typeOrSeq === 'fig8') {
+                    seq.push({cmd:'G',dur:2000}); seq.push({cmd:'I',dur:2000}); seq.push({cmd:'S',dur:0});
                 } else if (Array.isArray(typeOrSeq)) {
                     seq = typeOrSeq;
                 }
@@ -741,7 +702,7 @@
                 document.getElementById('btn-stop-auto').classList.remove('hidden');
                 Utils.toast("AI CONTROL", `Engaging ${mode.toUpperCase()} protocol`, "success");
                 
-                const acts = ['F', 'F', 'L', 'R', 'S']; // weighted towards F
+                const acts = ['F', 'F', 'L', 'R', 'S'];
                 this.autoInterval = setInterval(() => {
                     let cmd = 'S';
                     if (mode === 'explore') cmd = acts[Math.floor(Math.random() * acts.length)];
@@ -830,7 +791,7 @@
                     else if(keys.has('a')) cmd = 'L';
                     else if(keys.has('d')) cmd = 'R';
                     
-                    if(keys.has(' ')) { this.emergencyStop(); return; }
+                    if(keys.has(' ')) { this.triggerEmergencyStop(); return; }
                     if(keys.has('h')) this.sendReq("State=V");
                     this.sendReq(`State=${cmd}`);
                 };
@@ -838,15 +799,7 @@
                 window.addEventListener('keydown', (e) => {
                     if(document.activeElement.tagName === 'INPUT') return;
                     const k = e.key.toLowerCase();
-                    
-                    if (k === 'l') {
-                        if (!keys.has('l')) { 
-                            keys.add('l');
-                            document.getElementById('btn-headlight').click();
-                        }
-                        return;
-                    }
-
+                    if (k === 'l') { if (!keys.has('l')) { keys.add('l'); document.getElementById('btn-headlight').click(); } return; }
                     if(map[k] || k === ' ') {
                         if(!keys.has(k)) {
                             keys.add(k); update();
@@ -859,9 +812,7 @@
                 window.addEventListener('keyup', (e) => {
                     if(document.activeElement.tagName === 'INPUT') return;
                     const k = e.key.toLowerCase();
-                    
                     if (k === 'l') { keys.delete('l'); return; }
-
                     if(keys.has(k)) {
                         keys.delete(k); update();
                         let el = document.getElementById(`key-${k}`);
@@ -875,10 +826,7 @@
                 const ctx = cvs.getContext('2d');
                 let pts = [], drawing = false, seq = [];
 
-                const resize = () => {
-                    cvs.width = cvs.parentElement.clientWidth;
-                    cvs.height = cvs.parentElement.clientHeight;
-                };
+                const resize = () => { cvs.width = cvs.parentElement.clientWidth; cvs.height = cvs.parentElement.clientHeight; };
                 window.addEventListener('resize', resize);
                 setTimeout(resize, 100);
 
@@ -892,50 +840,35 @@
                 const draw = () => {
                     ctx.clearRect(0,0,cvs.width,cvs.height);
                     if(pts.length < 1) return;
-                    ctx.beginPath();
-                    ctx.moveTo(pts[0].x, pts[0].y);
+                    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
                     for(let i=1; i<pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-                    ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 3; 
-                    ctx.shadowBlur = 10; ctx.shadowColor = '#00ffff';
-                    ctx.stroke();
-                    
-                    ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, 5, 0, Math.PI*2); ctx.fillStyle='#39ff14'; ctx.fill(); // Start
-                    if(!drawing && pts.length>1) {
-                        ctx.beginPath(); ctx.arc(pts[pts.length-1].x, pts[pts.length-1].y, 5, 0, Math.PI*2); ctx.fillStyle='#ff2a2a'; ctx.fill(); // End
-                    }
+                    ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 3; ctx.shadowBlur = 10; ctx.shadowColor = '#00ffff'; ctx.stroke();
+                    ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, 5, 0, Math.PI*2); ctx.fillStyle='#39ff14'; ctx.fill(); 
+                    if(!drawing && pts.length>1) { ctx.beginPath(); ctx.arc(pts[pts.length-1].x, pts[pts.length-1].y, 5, 0, Math.PI*2); ctx.fillStyle='#ff2a2a'; ctx.fill(); }
                 };
 
                 cvs.addEventListener('pointerdown', (e) => { drawing = true; pts = [getPos(e)]; draw(); });
                 cvs.addEventListener('pointermove', (e) => {
                     if(!drawing) return;
                     const p = getPos(e), last = pts[pts.length-1];
-                    if(Math.hypot(p.x-last.x, p.y-last.y) > 15) { pts.push(p); draw(); } // Smooth
+                    if(Math.hypot(p.x-last.x, p.y-last.y) > 15) { pts.push(p); draw(); }
                 });
                 cvs.addEventListener('pointerup', () => {
                     if(!drawing) return;
                     drawing = false; draw();
                     
-                    // Simple path to command translation
-                    seq = [];
-                    let ang = -Math.PI/2; // assume pointing UP
+                    seq = []; let ang = -Math.PI/2; 
                     for(let i=0; i<pts.length-2; i+=2) {
                         const dx = pts[i+2].x - pts[i].x, dy = pts[i+2].y - pts[i].y;
-                        const ta = Math.atan2(dy, dx);
-                        const dist = Math.hypot(dx, dy);
-                        
+                        const ta = Math.atan2(dy, dx), dist = Math.hypot(dx, dy);
                         let diff = ta - ang;
-                        while(diff <= -Math.PI) diff += Math.PI*2;
-                        while(diff > Math.PI) diff -= Math.PI*2;
+                        while(diff <= -Math.PI) diff += Math.PI*2; while(diff > Math.PI) diff -= Math.PI*2;
                         
-                        if(Math.abs(diff) > 0.4) {
-                            seq.push({cmd: diff > 0 ? 'R' : 'L', dur: Math.abs(diff)*250});
-                            ang = ta;
-                        }
+                        if(Math.abs(diff) > 0.4) { seq.push({cmd: diff > 0 ? 'R' : 'L', dur: Math.abs(diff)*250}); ang = ta; }
                         seq.push({cmd:'F', dur: dist*10});
                     }
                     seq.push({cmd:'S', dur:0});
                     
-                    // Render Timeline
                     const tl = document.getElementById('path-timeline');
                     tl.classList.remove('hidden'); tl.innerHTML = '';
                     seq.forEach(s => {
@@ -948,13 +881,10 @@
                 });
 
                 document.getElementById('btn-clear-path').addEventListener('click', () => {
-                    pts = []; seq = []; ctx.clearRect(0,0,cvs.width,cvs.height);
-                    document.getElementById('path-timeline').classList.add('hidden');
+                    pts = []; seq = []; ctx.clearRect(0,0,cvs.width,cvs.height); document.getElementById('path-timeline').classList.add('hidden');
                 });
-
                 document.getElementById('btn-exec-path').addEventListener('click', () => {
-                    if(seq.length > 0) this.playMacroSequence(seq);
-                    else Utils.toast("Empty", "Draw a path first", "error");
+                    if(seq.length > 0) this.playMacroSequence(seq); else Utils.toast("Empty", "Draw a path first", "error");
                 });
             }
         }

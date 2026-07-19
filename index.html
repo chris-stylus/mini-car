@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nexus-ESP32 Control Center</title>
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Configuration & Styling -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        neon: { blue: '#00f3ff', cyan: '#00ffff', purple: '#b535f6', red: '#ff2a2a', green: '#39ff14', dark: '#0a0a0f' },
+                        glass: 'rgba(16, 18, 27, 0.7)',
+                        glassBorder: 'rgba(0, 243, 255, 0.2)'
+                    },
+                    fontFamily: {
+                        orbitron: ['Orbitron', 'sans-serif'],
+                        rajdhani: ['Rajdhani', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --primary-glow: 0 0 15px rgba(0, 243, 255, 0.5);
+            --danger-glow: 0 0 20px rgba(255, 42, 42, 0.6);
+            --bg-color: #050505;
+        }
+        
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(0, 243, 255, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 85% 30%, rgba(181, 53, 246, 0.05) 0%, transparent 50%);
+            color: #e2e8f0;
+            font-family: 'Rajdhani', sans-serif;
+            overflow-x: hidden;
+            overscroll-behavior: none;
+            touch-action: pan-x pan-y;
+        }
+
+        /* Glassmorphism Classes */
+        .glass-panel {
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glassBorder);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .glass-btn {
+            background: rgba(0, 243, 255, 0.1);
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            transition: all 0.2s ease-in-out;
+        }
+        
+        .glass-btn:hover {
+            background: rgba(0, 243, 255, 0.2);
+            box-shadow: var(--primary-glow);
+            transform: translateY(-2px);
+        }
+        
+        .glass-btn:active {
+            transform: translateY(1px);
+        }
+
+        /* Custom UI Elements */
+        .neon-text {
+            text-shadow: 0 0 5px rgba(0, 243, 255, 0.5);
+        }
+        
+        .title-font { font-family: 'Orbitron', sans-serif; }
+
+        .emergency-stop {
+            background: radial-gradient(circle, #ff2a2a 0%, #aa0000 100%);
+            border: 4px solid #440000;
+            box-shadow: var(--danger-glow), inset 0 0 20px rgba(0,0,0,0.5);
+            transition: all 0.1s;
+        }
+        .emergency-stop:active {
+            transform: scale(0.95);
+            box-shadow: 0 0 5px rgba(255,42,42,0.3), inset 0 0 30px rgba(0,0,0,0.8);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0a0a0f; }
+        ::-webkit-scrollbar-thumb { background: rgba(0, 243, 255, 0.3); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0, 243, 255, 0.6); }
+
+        /* Range Slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+            width: 100%;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #00f3ff;
+            cursor: pointer;
+            margin-top: -10px;
+            box-shadow: 0 0 10px #00f3ff;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: rgba(0, 243, 255, 0.2);
+            border-radius: 2px;
+        }
+
+        /* Radar Animation */
+        .radar {
+            position: relative;
+            width: 100%;
+            padding-bottom: 100%;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(0,243,255,0.1) 0%, transparent 70%);
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            overflow: hidden;
+        }
+        .radar-sweep {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 50%;
+            height: 2px;
+            background: linear-gradient(90deg, rgba(0,243,255,0) 0%, rgba(0,243,255,1) 100%);
+            transform-origin: 0 50%;
+            animation: sweep 2s linear infinite;
+        }
+        @keyframes sweep {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Loader & Status */
+        .status-dot {
+            height: 12px; width: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-offline { background-color: #ff2a2a; box-shadow: 0 0 8px #ff2a2a; }
+        .status-online { background-color: #39ff14; box-shadow: 0 0 8px #39ff14; }
+
+        /* PIP Camera */
+        #camera-container.pip {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            height: 225px;
+            z-index: 50;
+            cursor: move;
+        }
+
+        /* Toast notifications */
+        #toast-container {
+            position: fixed; top: 20px; right: 20px; z-index: 9999;
+        }
+        .toast {
+            background: rgba(16, 18, 27, 0.9);
+            border-left: 4px solid #00f3ff;
+            backdrop-filter: blur(5px);
+            animation: slideIn 0.3s ease-out forwards;
+        }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+
+        /* Utility classes to hide/show */
+        .hidden-tab { display: none; }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col p-2 md:p-4 gap-4 overflow-hidden">
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="flex flex-col gap-2"></div>
+
+    <!-- Header Panel -->
+    <header class="glass-panel flex flex-col md:flex-row justify-between items-center p-3 gap-4 shrink-0">
+        <div class="flex items-center gap-3 w-full md:w-auto">
+            <i class="fa-solid fa-robot text-3xl text-neon-cyan drop-shadow-md"></i>
+            <div>
+                <h1 class="title-font text-xl md:text-2xl font-bold tracking-wider text-neon-cyan">NEXUS-C3 <span class="text-white">COMMAND</span></h1>
+                <p class="text-xs text-gray-400 font-mono">ESP32-C3 | DRV8833 Differential Drive</p>
+            </div>
+        </div>
+
+        <div class="flex-1 flex flex-wrap justify-center items-center gap-3 w-full md:w-auto">
+            <div class="bg-black/50 px-3 py-2 rounded border border-gray-800 flex items-center gap-2">
+                <i class="fa-solid fa-wifi text-gray-400 text-sm"></i>
+                <input type="text" id="ip-address" placeholder="192.168.4.1" class="bg-transparent border-none outline-none text-neon-cyan font-mono w-28 md:w-32 text-sm">
+            </div>
+            <button id="btn-connect" class="glass-btn px-4 py-2 rounded text-sm font-bold tracking-wider title-font flex items-center gap-2">
+                <i class="fa-solid fa-link"></i> CONNECT
+            </button>
+            <div class="flex items-center gap-2 ml-2">
+                <span id="conn-status-dot" class="status-dot status-offline"></span>
+                <span id="conn-status-text" class="text-xs font-mono uppercase tracking-widest text-neon-red">Offline</span>
+            </div>
+        </div>
+
+        <div class="hidden md:flex items-center gap-4 text-xs font-mono">
+            <div class="flex items-center gap-2" title="Ping latency (Estimated)">
+                <i class="fa-solid fa-satellite-dish text-gray-400"></i>
+                <span id="ping-display" class="w-8">-- ms</span>
+            </div>
+            <div class="flex items-center gap-2" title="Simulated Battery">
+                <i class="fa-solid fa-battery-three-quarters text-green-400"></i>
+                <span>78%</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden">
+        
+        <!-- Left Column: Camera & Telemetry -->
+        <div class="w-full md:w-1/4 flex flex-col gap-4 min-w-[250px]">
+            <!-- Camera Feed Placeholder -->
+            <div id="camera-container" class="glass-panel flex-1 flex flex-col relative overflow-hidden group">
+                <div class="bg-black/80 px-3 py-1 flex justify-between items-center absolute top-0 w-full z-10 border-b border-gray-800">
+                    <span class="text-xs font-mono text-gray-300"><i class="fa-solid fa-video text-red-500 animate-pulse"></i> CAM STREAM</span>
+                    <button id="btn-pip" class="text-gray-400 hover:text-white transition"><i class="fa-solid fa-compress"></i></button>
+                </div>
+                <div class="flex-1 bg-black flex items-center justify-center relative">
+                    <!-- Static simulation overlay -->
+                    <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9IiMwMDAiLz48cmVjdCB3aWR0aD0iMSIgaGVpZ2h0PSIxIiBmaWxsPSIjMTExIi8+PC9zdmc+')] opacity-50 z-0"></div>
+                    <div class="z-10 text-center">
+                        <i class="fa-solid fa-eye-slash text-4xl text-gray-700 mb-2"></i>
+                        <p class="text-xs text-gray-500 font-mono">NO SIGNAL</p>
+                        <p class="text-[10px] text-gray-600">ESP32-CAM Not Configured</p>
+                    </div>
+                    <!-- Crosshair -->
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
+                        <div class="w-px h-full bg-neon-cyan"></div>
+                        <div class="h-px w-full bg-neon-cyan absolute"></div>
+                        <div class="w-12 h-12 border border-neon-cyan rounded-full absolute"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Telemetry & Radar -->
+            <div class="glass-panel flex-1 flex flex-col p-3 gap-2 overflow-hidden">
+                <div class="text-xs font-mono text-neon-cyan border-b border-gray-800 pb-1 mb-1">
+                    <i class="fa-solid fa-microchip"></i> TELEMETRY
+                </div>
+                
+                <div class="grid grid-cols-2 gap-2 text-xs font-mono mb-2">
+                    <div class="bg-black/30 p-2 rounded border border-gray-800">
+                        <span class="text-gray-500 block">LAST CMD</span>
+                        <span id="tele-cmd" class="text-neon-cyan text-lg">NONE</span>
+                    </div>
+                    <div class="bg-black/30 p-2 rounded border border-gray-800">
+                        <span class="text-gray-500 block">SPEED SET</span>
+                        <span id="tele-spd" class="text-neon-purple text-lg">0</span>/255
+                    </div>
+                </div>
+
+                <!-- Radar Map -->
+                <div class="flex-1 flex items-center justify-center relative">
+                    <div class="w-32 h-32 md:w-full md:max-w-[150px]">
+                        <div class="radar">
+                            <div class="radar-sweep"></div>
+                            <!-- Center dot representing robot -->
+                            <div class="absolute top-1/2 left-1/2 w-2 h-2 bg-neon-cyan rounded-full transform -translate-x-1/2 -translate-y-1/2 shadow-[0_0_8px_#00f3ff]"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mini Console -->
+                <div class="h-20 bg-black/50 rounded border border-gray-800 p-2 overflow-y-auto font-mono text-[10px] flex flex-col gap-1" id="console-log">
+                    <div class="text-gray-500">System initialized. Ready for link.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Column: Control Modes -->
+        <div class="glass-panel flex-[2] flex flex-col">
+            <!-- Tabs -->
+            <div class="flex border-b border-gray-800">
+                <button class="tab-btn flex-1 py-3 text-sm font-bold tracking-wider title-font text-neon-cyan border-b-2 border-neon-cyan bg-neon-cyan/5 transition" data-target="tab-manual">
+                    <i class="fa-solid fa-gamepad"></i> MANUAL
+                </button>
+                <button class="tab-btn flex-1 py-3 text-sm font-bold tracking-wider title-font text-gray-500 hover:text-white transition" data-target="tab-path">
+                    <i class="fa-solid fa-route"></i> DRAW PATH
+                </button>
+                <button class="tab-btn flex-1 py-3 text-sm font-bold tracking-wider title-font text-gray-500 hover:text-white transition" data-target="tab-auto">
+                    <i class="fa-solid fa-robot"></i> AUTONOMOUS
+                </button>
+            </div>
+
+            <div class="flex-1 relative overflow-hidden">
+                <!-- Tab 1: Manual Driving -->
+                <div id="tab-manual" class="absolute inset-0 flex flex-col items-center justify-center p-4">
+                    <div class="text-center mb-4">
+                        <p class="font-mono text-xs text-gray-400 mb-2">USE VIRTUAL JOYSTICK, ARROWS, OR W/A/S/D</p>
+                    </div>
+                    
+                    <!-- Virtual Joystick Area -->
+                    <div class="relative w-64 h-64 md:w-80 md:h-80 bg-black/30 rounded-full border-2 border-gray-800 flex items-center justify-center touch-none" id="joystick-zone">
+                        <!-- Grid lines -->
+                        <div class="absolute inset-0 rounded-full border border-gray-800 opacity-50 m-8"></div>
+                        <div class="absolute inset-0 rounded-full border border-gray-800 opacity-50 m-16"></div>
+                        <div class="w-full h-px bg-gray-800 absolute opacity-50"></div>
+                        <div class="h-full w-px bg-gray-800 absolute opacity-50"></div>
+                        
+                        <!-- Direction Labels -->
+                        <div class="absolute top-2 text-neon-cyan font-bold title-font drop-shadow-[0_0_5px_#00f3ff]">F</div>
+                        <div class="absolute bottom-2 text-neon-cyan font-bold title-font drop-shadow-[0_0_5px_#00f3ff]">B</div>
+                        <div class="absolute left-4 text-neon-cyan font-bold title-font drop-shadow-[0_0_5px_#00f3ff]">L</div>
+                        <div class="absolute right-4 text-neon-cyan font-bold title-font drop-shadow-[0_0_5px_#00f3ff]">R</div>
+                        
+                        <!-- Joystick Knob -->
+                        <div id="joystick-knob" class="w-20 h-20 bg-neon-cyan/20 rounded-full border-2 border-neon-cyan shadow-[0_0_15px_rgba(0,243,255,0.4)] absolute cursor-grab active:cursor-grabbing backdrop-blur-sm transition-transform duration-75 flex items-center justify-center">
+                            <div class="w-8 h-8 bg-neon-cyan rounded-full shadow-[0_0_10px_#00f3ff] inset-0 m-auto"></div>
+                        </div>
+                    </div>
+
+                    <!-- Keyboard Status Overlay -->
+                    <div class="absolute bottom-4 left-4 flex gap-1 opacity-50">
+                        <div class="kbd-key w-8 h-8 bg-black/50 border border-gray-700 rounded flex items-center justify-center font-mono text-xs" id="key-w">W</div>
+                        <div class="kbd-key w-8 h-8 bg-black/50 border border-gray-700 rounded flex items-center justify-center font-mono text-xs" id="key-a">A</div>
+                        <div class="kbd-key w-8 h-8 bg-black/50 border border-gray-700 rounded flex items-center justify-center font-mono text-xs" id="key-s">S</div>
+                        <div class="kbd-key w-8 h-8 bg-black/50 border border-gray-700 rounded flex items-center justify-center font-mono text-xs" id="key-d">D</div>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Path Drawing -->
+                <div id="tab-path" class="absolute inset-0 flex flex-col hidden-tab p-4 bg-black/20">
+                    <div class="flex justify-between items-center mb-2">
+                        <p class="font-mono text-xs text-gray-400"><i class="fa-solid fa-pen"></i> DRAW PATH TO GENERATE COMMANDS</p>
+                        <div class="flex gap-2">
+                            <button id="btn-clear-path" class="text-xs bg-gray-800 hover:bg-gray-700 px-2 py-1 rounded font-mono transition"><i class="fa-solid fa-trash"></i> CLEAR</button>
+                            <button id="btn-exec-path" class="text-xs bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/50 hover:bg-neon-cyan/40 px-3 py-1 rounded font-mono transition shadow-[0_0_10px_rgba(0,243,255,0.2)]"><i class="fa-solid fa-play"></i> EXECUTE</button>
+                        </div>
+                    </div>
+                    
+                    <div class="flex-1 relative rounded border-2 border-dashed border-gray-700 overflow-hidden bg-[radial-gradient(#222_1px,transparent_1px)] [background-size:16px_16px]">
+                        <canvas id="path-canvas" class="absolute inset-0 w-full h-full cursor-crosshair touch-none"></canvas>
+                        
+                        <!-- Overlay for generated commands -->
+                        <div id="path-timeline" class="absolute bottom-0 left-0 w-full h-12 bg-black/80 border-t border-gray-800 flex items-center px-2 gap-1 overflow-x-auto whitespace-nowrap hidden">
+                            <!-- Commands injected here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Path Settings -->
+                    <div class="mt-3 flex gap-4 text-xs font-mono items-center">
+                        <span class="text-gray-500">Scale:</span>
+                        <input type="range" id="path-scale" min="0.5" max="2" step="0.1" value="1" class="w-24">
+                        <span class="text-gray-500 ml-auto" id="path-stats">0 nodes | 0.0s est</span>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Autonomous & Macros -->
+                <div id="tab-auto" class="absolute inset-0 flex flex-col hidden-tab p-4 gap-4 overflow-y-auto">
+                    <!-- Macros Section -->
+                    <div class="bg-black/30 p-3 rounded-lg border border-gray-800">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="font-mono text-sm text-neon-purple font-bold"><i class="fa-solid fa-tape"></i> MACRO RECORDER</h3>
+                            <div class="flex gap-2">
+                                <button id="btn-record" class="text-xs bg-red-500/20 text-red-400 border border-red-500/50 hover:bg-red-500/40 px-3 py-1 rounded font-mono transition flex items-center gap-1">
+                                    <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse hidden" id="record-dot"></span>
+                                    <i class="fa-solid fa-circle" id="record-icon"></i> <span id="record-text">RECORD</span>
+                                </button>
+                                <button id="btn-save-macro" class="text-xs bg-gray-800 hover:bg-gray-700 px-2 py-1 rounded font-mono transition hidden"><i class="fa-solid fa-save"></i> SAVE</button>
+                            </div>
+                        </div>
+                        
+                        <div class="h-24 bg-black/60 rounded border border-gray-800 p-2 overflow-y-auto font-mono text-[10px]" id="macro-display">
+                            <div class="text-gray-600 italic text-center mt-6">Press Record to capture manual movements...</div>
+                        </div>
+
+                        <div class="mt-3 flex gap-2 overflow-x-auto pb-1" id="macro-list">
+                            <!-- Saved Macros -->
+                            <button class="shrink-0 glass-btn text-xs px-3 py-1 rounded flex items-center gap-2" onclick="controller.playPredefined('square')">
+                                <i class="fa-solid fa-square"></i> Square
+                            </button>
+                            <button class="shrink-0 glass-btn text-xs px-3 py-1 rounded flex items-center gap-2" onclick="controller.playPredefined('circle')">
+                                <i class="fa-solid fa-circle-notch"></i> Circle
+                            </button>
+                            <button class="shrink-0 glass-btn text-xs px-3 py-1 rounded flex items-center gap-2" onclick="controller.playPredefined('eight')">
+                                <i class="fa-solid fa-infinity"></i> Figure 8
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Autonomous Modes -->
+                    <div class="flex-1 bg-black/30 p-3 rounded-lg border border-gray-800 flex flex-col">
+                        <h3 class="font-mono text-sm text-neon-cyan font-bold mb-3"><i class="fa-solid fa-brain"></i> AI / AUTONOMOUS BEHAVIORS</h3>
+                        
+                        <div class="grid grid-cols-2 gap-3 flex-1">
+                            <button class="glass-btn rounded border border-gray-700 flex flex-col items-center justify-center gap-2 p-2 group hover:border-neon-cyan" onclick="controller.startAutonomous('patrol')">
+                                <i class="fa-solid fa-shield-halved text-2xl text-gray-500 group-hover:text-neon-cyan transition"></i>
+                                <span class="font-mono text-xs">SENTRY PATROL</span>
+                            </button>
+                            <button class="glass-btn rounded border border-gray-700 flex flex-col items-center justify-center gap-2 p-2 group hover:border-neon-purple" onclick="controller.startAutonomous('random')">
+                                <i class="fa-solid fa-shuffle text-2xl text-gray-500 group-hover:text-neon-purple transition"></i>
+                                <span class="font-mono text-xs">EXPLORE</span>
+                            </button>
+                            <div class="col-span-2 mt-auto">
+                                <button id="btn-stop-auto" class="w-full bg-red-500/20 text-red-500 border border-red-500/50 hover:bg-red-500/40 py-2 rounded font-mono text-xs font-bold transition hidden">
+                                    <i class="fa-solid fa-ban"></i> ABORT AUTONOMOUS MODE
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Settings & Actions -->
+        <div class="w-full md:w-1/4 flex flex-col gap-4 min-w-[200px]">
+            
+            <!-- Speed Control -->
+            <div class="glass-panel p-4 flex flex-col gap-4">
+                <div class="flex justify-between items-center text-xs font-mono text-gray-400">
+                    <span><i class="fa-solid fa-gauge-high"></i> ENGINE OUTPUT</span>
+                    <span id="speed-value" class="text-neon-cyan font-bold">100%</span>
+                </div>
+                
+                <input type="range" id="speed-slider" min="0" max="10" value="10" class="w-full">
+                
+                <div class="grid grid-cols-4 gap-1">
+                    <button class="text-[10px] font-mono bg-gray-800 hover:bg-gray-700 rounded py-1 transition speed-preset" data-val="3">SLOW</button>
+                    <button class="text-[10px] font-mono bg-gray-800 hover:bg-gray-700 rounded py-1 transition speed-preset" data-val="6">MED</button>
+                    <button class="text-[10px] font-mono bg-gray-800 hover:bg-gray-700 rounded py-1 transition speed-preset" data-val="9">FAST</button>
+                    <button class="text-[10px] font-mono bg-neon-cyan/20 border border-neon-cyan/50 text-neon-cyan hover:bg-neon-cyan/40 rounded py-1 transition speed-preset shadow-[0_0_5px_rgba(0,243,255,0.3)]" data-val="10">TURBO</button>
+                </div>
+            </div>
+
+            <!-- Accessories -->
+            <div class="glass-panel p-4 grid grid-cols-2 gap-3">
+                <button id="btn-horn" class="glass-btn flex flex-col items-center justify-center gap-2 p-3 rounded aspect-square">
+                    <i class="fa-solid fa-bullhorn text-2xl text-yellow-400"></i>
+                    <span class="font-mono text-xs">HORN (V)</span>
+                </button>
+                
+                <button id="btn-light" class="glass-btn flex flex-col items-center justify-center gap-2 p-3 rounded aspect-square">
+                    <i id="light-icon" class="fa-solid fa-lightbulb text-2xl text-gray-500"></i>
+                    <span class="font-mono text-xs">LIGHT (W)</span>
+                </button>
+            </div>
+
+            <!-- Emergency Stop -->
+            <div class="mt-auto">
+                <button id="btn-estop" class="w-full emergency-stop rounded-xl py-6 flex flex-col items-center justify-center gap-2 text-white outline-none select-none">
+                    <i class="fa-solid fa-triangle-exclamation text-3xl mb-1"></i>
+                    <span class="title-font font-black text-xl tracking-widest uppercase">E-Stop</span>
+                    <span class="font-mono text-[10px] opacity-70">(SPACEBAR)</span>
+                </button>
+            </div>
+            
+        </div>
+    </main>
+
+    <script>
+        // --- UTILITY & AUDIO SYSTEM ---
+        const Utils = {
+            log: (msg, type = 'info') => {
+                const consoleDiv = document.getElementById('console-log');
+                const entry = document.createElement('div');
+                const time = new Date().toLocaleTimeString('en-US', { hour12: false, hour: "numeric", minute: "numeric", second: "numeric" });
+                
+                let colorClass = 'text-gray-300';
+                if(type === 'error') colorClass = 'text-red-400';
+                if(type === 'cmd') colorClass = 'text-neon-cyan';
+                if(type === 'success') colorClass = 'text-green-400';
+
+                entry.innerHTML = `<span class="text-gray-600">[${time}]</span> <span class="${colorClass}">${msg}</span>`;
+                consoleDiv.appendChild(entry);
+                consoleDiv.scrollTop = consoleDiv.scrollHeight;
+                
+                // Keep only last 20 logs
+                if(consoleDiv.children.length > 20) {
+                    consoleDiv.removeChild(consoleDiv.firstChild);
+                }
+            },
+            toast: (title, msg, duration = 3000) => {
+                const container = document.getElementById('toast-container');
+                const toast = document.createElement('div');
+                toast.className = 'toast p-3 rounded shadow-lg font-mono text-sm min-w-[250px]';
+                toast.innerHTML = `<strong class="text-neon-cyan block mb-1">${title}</strong><span class="text-gray-300 text-xs">${msg}</span>`;
+                container.appendChild(toast);
+                
+                setTimeout(() => {
+                    toast.style.animation = 'slideOut 0.3s ease-in forwards';
+                    setTimeout(() => toast.remove(), 300);
+                }, duration);
+            },
+            mapRange: (value, inMin, inMax, outMin, outMax) => {
+                return (value - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
+            }
+        };
+
+        class SoundSystem {
+            constructor() {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                this.enabled = true;
+            }
+            
+            playTone(freq, type = 'sine', duration = 0.1, vol = 0.1) {
+                if(!this.enabled || this.ctx.state === 'suspended') return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                
+                gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+                
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            }
+            
+            click() { this.playTone(800, 'sine', 0.05, 0.05); }
+            error() { this.playTone(150, 'square', 0.2, 0.1); this.playTone(100, 'square', 0.3, 0.1); }
+            success() { this.playTone(600, 'sine', 0.1, 0.05); setTimeout(() => this.playTone(800, 'sine', 0.15, 0.05), 100); }
+            horn() { this.playTone(400, 'sawtooth', 0.3, 0.2); }
+            estop() { this.playTone(100, 'sawtooth', 0.5, 0.3); }
+        }
+        
+        const audio = new SoundSystem();
+        
+        // Resume AudioContext on first interaction (browser requirement)
+        document.body.addEventListener('click', () => {
+            if(audio.ctx.state === 'suspended') audio.ctx.resume();
+        }, { once: true });
+
+        class RobotController {
+            constructor() {
+                this.ip = localStorage.getItem('esp32_ip') || '';
+                this.isConnected = false;
+                this.currentSpeed = 10; // 0-10 mapped to 0-9, q
+                this.lastCommand = 'S';
+                this.lightState = false;
+                
+                this.autoMode = false;
+                this.autoInterval = null;
+                
+                this.macroRecording = false;
+                this.currentMacro = [];
+                this.macroStartTime = 0;
+                this.macroPlaybackActive = false;
+                
+                // UI Elements
+                this.ipInput = document.getElementById('ip-address');
+                this.statusDot = document.getElementById('conn-status-dot');
+                this.statusText = document.getElementById('conn-status-text');
+                this.pingDisplay = document.getElementById('ping-display');
+                
+                this.init();
+            }
+            
+            init() {
+                this.ipInput.value = this.ip;
+                
+                document.getElementById('btn-connect').addEventListener('click', () => {
+                    audio.click();
+                    this.connect();
+                });
+                
+                // Speed Controller
+                const speedSlider = document.getElementById('speed-slider');
+                const speedVal = document.getElementById('speed-value');
+                const teleSpd = document.getElementById('tele-spd');
+                
+                const updateSpeedUI = (val) => {
+                    this.currentSpeed = parseInt(val);
+                    const pct = this.currentSpeed * 10;
+                    speedVal.textContent = pct + '%';
+                    
+                    // ESP32 PWM Mapping Logic:
+                    // slider 0-9 maps to string '0'-'9', slider 10 maps to 'q' (max 255)
+                    let espSpeedVal = 80 + (this.currentSpeed * 17); // Approximation for UI telemetry
+                    if (this.currentSpeed === 10) espSpeedVal = 255;
+                    if (this.currentSpeed === 0) espSpeedVal = 0;
+                    
+                    teleSpd.textContent = espSpeedVal;
+                    this.sendSpeedCommand();
+                };
+                
+                speedSlider.addEventListener('input', (e) => updateSpeedUI(e.target.value));
+                speedSlider.addEventListener('change', () => audio.click());
+                
+                document.querySelectorAll('.speed-preset').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        audio.click();
+                        speedSlider.value = e.target.dataset.val;
+                        updateSpeedUI(e.target.dataset.val);
+                    });
+                });
+                
+                // Accessories
+                document.getElementById('btn-horn').addEventListener('click', () => { this.sendCmd('V'); audio.horn(); });
+                document.getElementById('btn-light').addEventListener('click', () => this.toggleLight());
+                
+                // Emergency Stop
+                document.getElementById('btn-estop').addEventListener('click', () => this.emergencyStop());
+                
+                // Heartbeat / Connection check
+                setInterval(() => this.checkConnection(), 5000);
+            }
+            
+            async connect() {
+                const ip = this.ipInput.value.trim();
+                if (!ip) {
+                    Utils.toast("Error", "Enter a valid IP address");
+                    audio.error();
+                    return;
+                }
+                
+                this.ip = ip;
+                localStorage.setItem('esp32_ip', ip);
+                this.statusText.textContent = "CONNECTING...";
+                this.statusText.className = "text-xs font-mono uppercase tracking-widest text-yellow-400";
+                
+                try {
+                    const start = performance.now();
+                    // Using no-cors because ESP32 standard HTTP server doesn't send CORS headers
+                    await fetch(`http://${this.ip}/?State=S`, { mode: 'no-cors', cache: 'no-store', signal: AbortSignal.timeout(3000) });
+                    const ping = Math.round(performance.now() - start);
+                    
+                    this.isConnected = true;
+                    this.updateConnectionUI(true, ping);
+                    Utils.log(`Connected to ${this.ip}`, 'success');
+                    audio.success();
+                    Utils.toast("Connected", `Link established with Nexus-C3 (${ping}ms)`);
+                    
+                    // Sync initial speed
+                    this.sendSpeedCommand();
+                    
+                } catch (err) {
+                    this.isConnected = false;
+                    this.updateConnectionUI(false);
+                    Utils.log(`Connection failed: ${err.message}`, 'error');
+                    audio.error();
+                    Utils.toast("Connection Failed", "Check IP, WiFi network, and power.", 5000);
+                }
+            }
+            
+            updateConnectionUI(connected, ping = 0) {
+                if(connected) {
+                    this.statusDot.className = "status-dot status-online";
+                    this.statusText.textContent = "ONLINE";
+                    this.statusText.className = "text-xs font-mono uppercase tracking-widest text-green-400";
+                    this.pingDisplay.textContent = ping + " ms";
+                } else {
+                    this.statusDot.className = "status-dot status-offline";
+                    this.statusText.textContent = "OFFLINE";
+                    this.statusText.className = "text-xs font-mono uppercase tracking-widest text-neon-red";
+                    this.pingDisplay.textContent = "-- ms";
+                }
+            }
+            
+            async checkConnection() {
+                if(!this.isConnected || !this.ip) return;
+                try {
+                    const start = performance.now();
+                    await fetch(`http://${this.ip}/`, { mode: 'no-cors', cache: 'no-store', signal: AbortSignal.timeout(2000) });
+                    this.pingDisplay.textContent = Math.round(performance.now() - start) + " ms";
+                } catch (e) {
+                    this.isConnected = false;
+                    this.updateConnectionUI(false);
+                    Utils.log("Connection lost!", 'error');
+                    this.emergencyStop(); // Safety
+                }
+            }
+            
+            sendSpeedCommand() {
+                // Map 0-10 to '0'-'9', 'q'
+                let cmd = this.currentSpeed.toString();
+                if(this.currentSpeed === 10) cmd = 'q';
+                this.sendCmd(cmd, true); // true = silent log
+            }
+            
+            toggleLight() {
+                audio.click();
+                this.lightState = !this.lightState;
+                const icon = document.getElementById('light-icon');
+                if(this.lightState) {
+                    this.sendCmd('W');
+                    icon.classList.remove('text-gray-500');
+                    icon.classList.add('text-neon-cyan', 'drop-shadow-[0_0_8px_#00f3ff]');
+                } else {
+                    this.sendCmd('w');
+                    icon.classList.add('text-gray-500');
+                    icon.classList.remove('text-neon-cyan', 'drop-shadow-[0_0_8px_#00f3ff]');
+                }
+            }
+            
+            emergencyStop() {
+                audio.estop();
+                this.abortAuto();
+                this.macroPlaybackActive = false;
+                this.sendCmd('S');
+                Utils.toast("EMERGENCY STOP", "All systems halted.", 4000);
+            }
+
+            // Core send function
+            sendCmd(cmd, silent = false) {
+                if (this.macroRecording && !silent && "FBLRGIHJS".includes(cmd)) {
+                    this.recordCommand(cmd);
+                }
+
+                // Prevent sending duplicate continuous movement commands to save bandwidth
+                if (cmd === this.lastCommand && "FBLRGIHJS".includes(cmd)) return;
+                
+                if ("FBLRGIHJS".includes(cmd)) {
+                    this.lastCommand = cmd;
+                    document.getElementById('tele-cmd').textContent = cmd;
+                }
+
+                if(!silent) Utils.log(`CMD: ${cmd}`, 'cmd');
+
+                if(!this.ip || !this.isConnected) return; // Allow UI update but no fetch
+
+                // Fire and forget using no-cors
+                fetch(`http://${this.ip}/?State=${cmd}`, { 
+                    method: 'GET',
+                    mode: 'no-cors',
+                    cache: 'no-store'
+                }).catch(() => {}); // Ignore network errors on rapid fire
+            }
+
+            
+            toggleMacroRecording() {
+                const btn = document.getElementById('btn-record');
+                const dot = document.getElementById('record-dot');
+                const text = document.getElementById('record-text');
+                const icon = document.getElementById('record-icon');
+                const saveBtn = document.getElementById('btn-save-macro');
+                
+                if (!this.macroRecording) {
+                    // Start recording
+                    audio.click();
+                    this.macroRecording = true;
+                    this.currentMacro = [];
+                    this.macroStartTime = Date.now();
+                    
+                    btn.classList.replace('bg-red-500/20', 'bg-red-900/50');
+                    dot.classList.remove('hidden');
+                    icon.classList.add('hidden');
+                    text.textContent = "RECORDING...";
+                    saveBtn.classList.add('hidden');
+                    
+                    document.getElementById('macro-display').innerHTML = '';
+                    Utils.log("Started recording macro", 'info');
+                    
+                    // Force stop state as baseline
+                    this.sendCmd('S', true);
+                    this.recordCommand('S');
+                } else {
+                    // Stop recording
+                    audio.click();
+                    this.macroRecording = false;
+                    
+                    btn.classList.replace('bg-red-900/50', 'bg-red-500/20');
+                    dot.classList.add('hidden');
+                    icon.classList.remove('hidden');
+                    text.textContent = "RECORD";
+                    
+                    if (this.currentMacro.length > 0) {
+                        saveBtn.classList.remove('hidden');
+                    }
+                    Utils.log(`Stopped recording. ${this.currentMacro.length} steps.`, 'info');
+                }
+            }
+            
+            recordCommand(cmd) {
+                if (!this.macroRecording) return;
+                
+                const now = Date.now();
+                const delta = now - this.macroStartTime;
+                this.macroStartTime = now;
+                
+                // Update previous command duration if it exists
+                if (this.currentMacro.length > 0) {
+                    this.currentMacro[this.currentMacro.length - 1].duration = delta;
+                }
+                
+                this.currentMacro.push({ cmd: cmd, duration: 0 }); // Duration filled on next cmd or stop
+                
+                // Update UI Display
+                const display = document.getElementById('macro-display');
+                const entry = document.createElement('div');
+                entry.className = "flex gap-2 border-b border-gray-800 pb-1 mb-1";
+                entry.innerHTML = `<span class="text-neon-cyan font-bold w-4">${cmd}</span> <span class="text-gray-500">at T+${delta}ms</span>`;
+                display.appendChild(entry);
+                display.scrollTop = display.scrollHeight;
+            }
+
+            async playMacro(sequence) {
+                if (this.macroPlaybackActive || this.autoMode) {
+                    Utils.toast("Busy", "Another sequence is currently running");
+                    return;
+                }
+                this.macroPlaybackActive = true;
+                Utils.log("Playing sequence...", 'info');
+                
+                for (let i = 0; i < sequence.length; i++) {
+                    if (!this.macroPlaybackActive) break; // Abort check
+                    
+                    const step = sequence[i];
+                    this.sendCmd(step.cmd, true);
+                    Utils.log(`[Auto] ${step.cmd} for ${step.duration}ms`, 'cmd');
+                    
+                    if (step.duration > 0) {
+                        await new Promise(resolve => setTimeout(resolve, step.duration));
+                    }
+                }
+                
+                this.sendCmd('S');
+                this.macroPlaybackActive = false;
+                Utils.log("Sequence complete", 'success');
+            }
+
+            playPredefined(type) {
+                audio.click();
+                // Assumes default speed coefficient logic from ESP32.
+                // Timings are approximations since actual movement depends on motor/battery.
+                let seq = [];
+                const turnTime = 800; // ms approx 90 deg
+                const moveTime = 1500;
+                
+                if (type === 'square') {
+                    for(let i=0; i<4; i++) {
+                        seq.push({cmd: 'F', duration: moveTime});
+                        seq.push({cmd: 'R', duration: turnTime});
+                    }
+                } else if (type === 'circle') {
+                    seq.push({cmd: 'G', duration: 4000}); // Forward Left curve
+                } else if (type === 'eight') {
+                    seq.push({cmd: 'G', duration: 4000});
+                    seq.push({cmd: 'I', duration: 4000});
+                }
+                
+                seq.push({cmd: 'S', duration: 0});
+                this.playMacro(seq);
+            }
+
+            startAutonomous(mode) {
+                audio.click();
+                if(this.autoMode) return;
+                this.autoMode = true;
+                document.getElementById('btn-stop-auto').classList.remove('hidden');
+                Utils.toast("Autonomous Mode", `Starting ${mode.toUpperCase()} protocol...`, 4000);
+                Utils.log(`Auto mode: ${mode}`, 'info');
+
+                const actions = ['F', 'B', 'L', 'R', 'G', 'I', 'S'];
+                
+                this.autoInterval = setInterval(() => {
+                    if(!this.autoMode) { clearInterval(this.autoInterval); return; }
+                    
+                    let nextCmd = 'S';
+                    let delay = 1000;
+                    
+                    if (mode === 'random') {
+                        nextCmd = actions[Math.floor(Math.random() * actions.length)];
+                        delay = 500 + Math.random() * 1500;
+                    } else if (mode === 'patrol') {
+                        // Simple ping-pong
+                        nextCmd = this.lastCommand === 'F' ? 'B' : 'F';
+                        delay = 2000;
+                    }
+                    
+                    this.sendCmd(nextCmd, true);
+                    
+                }, 2000);
+            }
+
+            abortAuto() {
+                if(this.autoMode) {
+                    this.autoMode = false;
+                    clearInterval(this.autoInterval);
+                    document.getElementById('btn-stop-auto').classList.add('hidden');
+                    this.sendCmd('S');
+                    Utils.log("Autonomous mode aborted", 'info');
+                }
+            }
+        }
+
+        const controller = new RobotController();
+        
+        // Setup Macro Record UI events
+        document.getElementById('btn-record').addEventListener('click', () => controller.toggleMacroRecording());
+        document.getElementById('btn-stop-auto').addEventListener('click', () => { audio.click(); controller.abortAuto(); });
+        
+        // Tab Switching Logic
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                audio.click();
+                
+                // Reset active styles
+                document.querySelectorAll('.tab-btn').forEach(b => {
+                    b.classList.remove('text-neon-cyan', 'border-b-2', 'border-neon-cyan', 'bg-neon-cyan/5');
+                    b.classList.add('text-gray-500');
+                });
+                
+                // Set active style
+                const target = e.currentTarget;
+                target.classList.remove('text-gray-500');
+                target.classList.add('text-neon-cyan', 'border-b-2', 'border-neon-cyan', 'bg-neon-cyan/5');
+                
+                // Hide all tabs
+                document.getElementById('tab-manual').style.display = 'none';
+                document.getElementById('tab-path').style.display = 'none';
+                document.getElementById('tab-auto').style.display = 'none';
+                
+                // Show selected
+                const tabId = target.getAttribute('data-target');
+                document.getElementById(tabId).style.display = 'flex';
+                
+                // Specific setup
+                if (tabId === 'tab-path') window.dispatchEvent(new Event('resize')); // Fix canvas size
+            });
+        });
+
+
+        // --- KEYBOARD CONTROLS ---
+        const keyMap = {
+            'w': 'F', 's': 'B', 'a': 'L', 'd': 'R',
+            'ArrowUp': 'F', 'ArrowDown': 'B', 'ArrowLeft': 'L', 'ArrowRight': 'R',
+            ' ': 'S', 'v': 'V', 'h': 'V'
+        };
+        const activeKeys = new Set();
+        
+        window.addEventListener('keydown', (e) => {
+            if(document.activeElement.tagName === 'INPUT') return; // Don't trigger when typing IP
+            
+            const key = e.key.toLowerCase();
+            if (keyMap[key] || e.key === ' ' || e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                e.preventDefault();
+                let actualKey = keyMap[e.key] ? e.key : key; // handle arrows
+                if(actualKey === ' ') actualKey = ' ';
+
+                if (!activeKeys.has(actualKey)) {
+                    activeKeys.add(actualKey);
+                    updateMovementFromKeys();
+                    
+                    // UI Highlights
+                    const uiKey = document.getElementById(`key-${actualKey}`);
+                    if(uiKey) {
+                        uiKey.classList.replace('bg-black/50', 'bg-neon-cyan/50');
+                        uiKey.classList.replace('border-gray-700', 'border-neon-cyan');
+                        uiKey.classList.add('text-white', 'shadow-[0_0_10px_#00f3ff]');
+                    }
+                }
+            }
+        });
+        
+        window.addEventListener('keyup', (e) => {
+            if(document.activeElement.tagName === 'INPUT') return;
+            const key = e.key.toLowerCase();
+            let actualKey = keyMap[e.key] ? e.key : key;
+            if(actualKey === ' ') actualKey = ' ';
+
+            if (activeKeys.has(actualKey)) {
+                activeKeys.delete(actualKey);
+                updateMovementFromKeys();
+                
+                // UI Un-highlights
+                const uiKey = document.getElementById(`key-${actualKey}`);
+                if(uiKey) {
+                    uiKey.classList.replace('bg-neon-cyan/50', 'bg-black/50');
+                    uiKey.classList.replace('border-neon-cyan', 'border-gray-700');
+                    uiKey.classList.remove('text-white', 'shadow-[0_0_10px_#00f3ff]');
+                }
+            }
+        });
+
+        function updateMovementFromKeys() {
+            if(activeKeys.has(' ')) { controller.emergencyStop(); return; }
+            if(activeKeys.has('v') || activeKeys.has('h')) { controller.sendCmd('V'); return; }
+
+            const w = activeKeys.has('w') || activeKeys.has('ArrowUp');
+            const s = activeKeys.has('s') || activeKeys.has('ArrowDown');
+            const a = activeKeys.has('a') || activeKeys.has('ArrowLeft');
+            const d = activeKeys.has('d') || activeKeys.has('ArrowRight');
+
+            let cmd = 'S';
+            if (w && a) cmd = 'G'; // Forward Left
+            else if (w && d) cmd = 'I'; // Forward Right
+            else if (s && a) cmd = 'H'; // Backward Left
+            else if (s && d) cmd = 'J'; // Backward Right
+            else if (w) cmd = 'F';
+            else if (s) cmd = 'B';
+            else if (a) cmd = 'L';
+            else if (d) cmd = 'R';
+
+            controller.sendCmd(cmd);
+        }
+
+        // --- VIRTUAL JOYSTICK ---
+        const zone = document.getElementById('joystick-zone');
+        const knob = document.getElementById('joystick-knob');
+        let joyActive = false;
+        let joyCenter = { x: 0, y: 0 };
+        let maxDist = 0;
+
+        function getJoystickCmd(dx, dy) {
+            // Calculate angle and distance
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist < 20) return 'S'; // Deadzone
+            
+            const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+            
+            // Map angles to commands (F, B, L, R, diagonals)
+            // 0 is right, -90 is up, 90 is down, 180 is left
+            
+            if (angle > -22.5 && angle <= 22.5) return 'R';
+            if (angle > 22.5 && angle <= 67.5) return 'J'; // Backward Right
+            if (angle > 67.5 && angle <= 112.5) return 'B';
+            if (angle > 112.5 && angle <= 157.5) return 'H'; // Backward Left
+            if (angle > 157.5 || angle <= -157.5) return 'L';
+            if (angle > -157.5 && angle <= -112.5) return 'G'; // Forward Left
+            if (angle > -112.5 && angle <= -67.5) return 'F';
+            if (angle > -67.5 && angle <= -22.5) return 'I'; // Forward Right
+            
+            return 'S';
+        }
+
+        function handleJoyStart(e) {
+            e.preventDefault();
+            joyActive = true;
+            const rect = zone.getBoundingClientRect();
+            joyCenter = { x: rect.width / 2, y: rect.height / 2 };
+            maxDist = (rect.width / 2) - 40; // knob radius
+            knob.style.transition = 'none';
+            handleJoyMove(e);
+        }
+
+        function handleJoyMove(e) {
+            if (!joyActive) return;
+            e.preventDefault();
+            
+            const rect = zone.getBoundingClientRect();
+            let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            let clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            let dx = clientX - rect.left - joyCenter.x;
+            let dy = clientY - rect.top - joyCenter.y;
+            
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist > maxDist) {
+                dx = (dx / dist) * maxDist;
+                dy = (dy / dist) * maxDist;
+            }
+            
+            knob.style.transform = `translate(${dx}px, ${dy}px)`;
+            
+            const cmd = getJoystickCmd(dx, dy);
+            controller.sendCmd(cmd);
+        }
+
+        function handleJoyEnd(e) {
+            e.preventDefault();
+            joyActive = false;
+            knob.style.transition = 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            knob.style.transform = `translate(0px, 0px)`;
+            controller.sendCmd('S');
+        }
+
+        // Pointer Events for broader device support
+        zone.addEventListener('pointerdown', handleJoyStart);
+        window.addEventListener('pointermove', handleJoyMove);
+        window.addEventListener('pointerup', handleJoyEnd);
+
+
+        
+        // --- PATH DRAWING SYSTEM ---
+        const canvas = document.getElementById('path-canvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let pathPoints = [];
+        let generatedSequence = [];
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            drawPath();
+        }
+        window.addEventListener('resize', resizeCanvas);
+        
+        function getPointerPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        canvas.addEventListener('pointerdown', (e) => {
+            isDrawing = true;
+            pathPoints = [getPointerPos(e)];
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        });
+
+        canvas.addEventListener('pointermove', (e) => {
+            if (!isDrawing) return;
+            const pos = getPointerPos(e);
+            
+            // Only add point if it's moved a certain distance (smoothing)
+            const last = pathPoints[pathPoints.length - 1];
+            const dist = Math.hypot(pos.x - last.x, pos.y - last.y);
+            if (dist > 10) {
+                pathPoints.push(pos);
+                drawPath();
+            }
+        });
+
+        canvas.addEventListener('pointerup', () => {
+            if(!isDrawing) return;
+            isDrawing = false;
+            processPath();
+        });
+
+        function drawPath() {
+            if (pathPoints.length < 1) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid overlay effect (optional, handled by CSS mostly)
+
+            ctx.beginPath();
+            ctx.moveTo(pathPoints[0].x, pathPoints[0].y);
+            
+            for (let i = 1; i < pathPoints.length; i++) {
+                ctx.lineTo(pathPoints[i].x, pathPoints[i].y);
+            }
+            
+            ctx.strokeStyle = '#00f3ff';
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#00f3ff';
+            ctx.stroke();
+
+            // Draw Start Node
+            ctx.beginPath();
+            ctx.arc(pathPoints[0].x, pathPoints[0].y, 6, 0, Math.PI*2);
+            ctx.fillStyle = '#39ff14';
+            ctx.fill();
+            
+            // Draw End Node
+            if(!isDrawing && pathPoints.length > 1) {
+                const last = pathPoints[pathPoints.length-1];
+                ctx.beginPath();
+                ctx.arc(last.x, last.y, 6, 0, Math.PI*2);
+                ctx.fillStyle = '#ff2a2a';
+                ctx.fill();
+            }
+        }
+
+        function processPath() {
+            if (pathPoints.length < 2) return;
+            audio.success();
+            
+            const scale = parseFloat(document.getElementById('path-scale').value); // Time multiplier
+            generatedSequence = [];
+            let totalTime = 0;
+            
+            // Simplified Path -> Differential Drive Conversion Algorithm
+            // Assumes robot starts facing UP (negative Y direction)
+            let currentAngle = -Math.PI / 2; 
+
+            // Decimate points for simpler instruction set
+            const stepSize = 3; 
+            for (let i = 0; i < pathPoints.length - stepSize; i += stepSize) {
+                const p1 = pathPoints[i];
+                const p2 = pathPoints[i + stepSize];
+                
+                const dx = p2.x - p1.x;
+                const dy = p2.y - p1.y;
+                const targetAngle = Math.atan2(dy, dx);
+                const distance = Math.hypot(dx, dy);
+                
+                // Calculate turn needed
+                let angleDiff = targetAngle - currentAngle;
+                // Normalize to -PI to PI
+                while (angleDiff <= -Math.PI) angleDiff += Math.PI * 2;
+                while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+
+                // Threshold for turning (ignore tiny variations)
+                if (Math.abs(angleDiff) > 0.3) {
+                    const turnCmd = angleDiff > 0 ? 'R' : 'L';
+                    // Rough estimation: 1 rad = ~300ms turn time (highly dependent on robot)
+                    const turnTime = Math.abs(angleDiff) * 300 * scale; 
+                    
+                    if(generatedSequence.length > 0 && generatedSequence[generatedSequence.length-1].cmd === turnCmd) {
+                        generatedSequence[generatedSequence.length-1].duration += turnTime;
+                    } else {
+                        generatedSequence.push({ cmd: turnCmd, duration: turnTime });
+                    }
+                    totalTime += turnTime;
+                    currentAngle = targetAngle;
+                }
+
+                // Move forward
+                // Rough estimation: 1 pixel = ~15ms travel time
+                const moveTime = distance * 15 * scale;
+                if(generatedSequence.length > 0 && generatedSequence[generatedSequence.length-1].cmd === 'F') {
+                    generatedSequence[generatedSequence.length-1].duration += moveTime;
+                } else {
+                    generatedSequence.push({ cmd: 'F', duration: moveTime });
+                }
+                totalTime += moveTime;
+            }
+            
+            generatedSequence.push({ cmd: 'S', duration: 0 });
+
+            // Update UI
+            document.getElementById('path-stats').textContent = `${pathPoints.length} nodes | ${(totalTime/1000).toFixed(1)}s est`;
+            renderTimeline();
+        }
+
+        function renderTimeline() {
+            const tl = document.getElementById('path-timeline');
+            tl.classList.remove('hidden');
+            tl.innerHTML = '';
+            
+            generatedSequence.forEach((step, idx) => {
+                if(step.cmd === 'S') return;
+                const el = document.createElement('div');
+                const isTurn = step.cmd === 'L' || step.cmd === 'R';
+                el.className = `inline-flex items-center justify-center text-[10px] font-mono px-2 py-1 rounded border ${isTurn ? 'bg-purple-900/50 border-purple-500 text-purple-300' : 'bg-cyan-900/50 border-cyan-500 text-cyan-300'}`;
+                el.textContent = `${step.cmd} ${(step.duration/1000).toFixed(1)}s`;
+                tl.appendChild(el);
+            });
+        }
+
+        document.getElementById('btn-clear-path').addEventListener('click', () => {
+            audio.click();
+            pathPoints = [];
+            generatedSequence = [];
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('path-timeline').classList.add('hidden');
+            document.getElementById('path-stats').textContent = `0 nodes | 0.0s est`;
+        });
+
+        document.getElementById('btn-exec-path').addEventListener('click', () => {
+            if(generatedSequence.length === 0) {
+                Utils.toast("Warning", "Draw a path first!");
+                audio.error();
+                return;
+            }
+            audio.click();
+            controller.playMacro(generatedSequence);
+        });
+        
+        document.getElementById('path-scale').addEventListener('change', () => {
+             if(pathPoints.length > 0) processPath(); // Recalculate times
+        });
+
+
+        
+        // --- PIP CAMERA LOGIC ---
+        const camContainer = document.getElementById('camera-container');
+        const btnPip = document.getElementById('btn-pip');
+        let isPip = false;
+        
+        btnPip.addEventListener('click', () => {
+            audio.click();
+            isPip = !isPip;
+            if(isPip) {
+                camContainer.classList.add('pip');
+                btnPip.innerHTML = '<i class="fa-solid fa-expand"></i>';
+            } else {
+                camContainer.classList.remove('pip');
+                camContainer.style.transform = ''; // reset drag
+                btnPip.innerHTML = '<i class="fa-solid fa-compress"></i>';
+            }
+        });
+        
+        // Simple drag for PIP
+        let isDraggingCam = false;
+        let dragOffset = {x:0, y:0};
+        
+        camContainer.addEventListener('mousedown', (e) => {
+            if(!isPip || e.target.closest('button')) return;
+            isDraggingCam = true;
+            const rect = camContainer.getBoundingClientRect();
+            dragOffset = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        });
+        
+        window.addEventListener('mousemove', (e) => {
+            if(!isDraggingCam) return;
+            camContainer.style.left = (e.clientX - dragOffset.x) + 'px';
+            camContainer.style.top = (e.clientY - dragOffset.y) + 'px';
+            camContainer.style.bottom = 'auto';
+            camContainer.style.right = 'auto';
+        });
+        
+        window.addEventListener('mouseup', () => isDraggingCam = false);
+
+        // --- INITIALIZATION ---
+        window.addEventListener('DOMContentLoaded', () => {
+            // Give layout time to settle, then resize canvas
+            setTimeout(() => {
+                if(document.getElementById('tab-path').style.display !== 'none') {
+                    resizeCanvas();
+                }
+            }, 500);
+            
+            // Try connecting automatically if IP exists
+            if(controller.ip) {
+                setTimeout(() => controller.connect(), 1000);
+            }
+        });
+
+    </script>
+</body>
+</html>
